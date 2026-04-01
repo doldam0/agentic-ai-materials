@@ -1,216 +1,9 @@
 ---
 marp: true
-theme: default
+theme: csi-agent
 paginate: true
-size: 16:9
+size: 1920x1080
 footer: "CSI Agent Lab @ SKKU"
-style: |
-  @import url("https://fonts.googleapis.com/css2?family=Red+Hat+Display:ital,wght@0,300..900;1,300..900&display=swap");
-  @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
-  @import url("https://fonts.googleapis.com/css2?family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap");
-
-  :root {
-    font-family: "Red Hat Display", "Pretendard", sans-serif;
-    --color-blue: #0d9dfc;
-    --color-purple: #9474fc;
-    --color-red: #f75a5f;
-    --color-orange: #f79f24;
-    --color-dark: #0f172a;
-    --grad: linear-gradient(135deg, var(--color-blue), var(--color-purple));
-    --grad-accent: linear-gradient(90deg, var(--color-blue), var(--color-purple), var(--color-red));
-  }
-
-  section {
-    background: #ffffff;
-    padding: 60px 80px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-  }
-
-  section::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: var(--grad-accent);
-  }
-
-  h1, h2, h3, strong { font-weight: 900; }
-
-  h1 {
-    font-size: 1.8em;
-    color: var(--color-dark);
-    margin: 0 0 8px 0;
-    padding-bottom: 12px;
-    border-bottom: 3px solid var(--color-blue);
-    display: inline-block;
-  }
-
-  h2 {
-    color: var(--color-purple);
-    font-size: 1.2em;
-    margin: 20px 0 12px 0;
-    padding-left: 12px;
-    border-left: 4px solid var(--color-purple);
-  }
-
-  h3 { color: #475569; font-size: 1em; }
-
-  p, li {
-    font-weight: 500;
-    font-size: 0.9em;
-    line-height: 1.7;
-    color: #334155;
-  }
-
-  em { font-style: normal; color: var(--color-red); font-weight: 700; }
-
-  code {
-    font-family: "Ubuntu Mono", "Pretendard", monospace;
-    background: #f1f5f9;
-    padding: 2px 8px;
-    border-radius: 4px;
-    color: var(--color-purple);
-  }
-
-  pre {
-    font-family: "Ubuntu Mono", "Pretendard", monospace;
-    font-size: 0.7em;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
-    color: #e2e8f0;
-    border-radius: 12px;
-    padding: 20px 24px;
-    border: 1px solid rgba(139, 92, 246, 0.3);
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.15), inset 0 0 60px rgba(0, 0, 0, 0.3);
-  }
-
-  pre code { background: transparent; padding: 0; color: #e2e8f0; }
-
-  .hljs-string, .hljs-attr { color: #00fff9; text-shadow: 0 0 8px rgba(0, 255, 249, 0.5); }
-  .hljs-keyword { color: #ff2a6d; text-shadow: 0 0 8px rgba(255, 42, 109, 0.5); font-weight: bold; }
-  .hljs-built_in, .hljs-type, .hljs-params { color: #05ffa1; text-shadow: 0 0 8px rgba(5, 255, 161, 0.4); }
-  .hljs-comment { color: #6272a4; font-style: italic; }
-  .hljs-function, .hljs-title, .hljs-title.function_ { color: #f9e900; text-shadow: 0 0 8px rgba(249, 233, 0, 0.5); }
-  .hljs-number { color: #ff79c6; text-shadow: 0 0 6px rgba(255, 121, 198, 0.5); }
-  .hljs-literal { color: #ffb86c; text-shadow: 0 0 6px rgba(255, 184, 108, 0.4); }
-  .hljs-subst { color: #f1fa8c; }
-  .hljs-variable, .hljs-variable.language_ { color: #bd93f9; text-shadow: 0 0 6px rgba(189, 147, 249, 0.4); }
-  .hljs-class, .hljs-name, .hljs-title.class_ { color: #8be9fd; text-shadow: 0 0 6px rgba(139, 233, 253, 0.4); }
-  .hljs-meta { color: #ff79c6; }
-  .hljs-property { color: #66d9ef; }
-
-  table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 16px 0; font-size: 0.8em; border-radius: 8px; overflow: hidden; }
-  table thead tr { background: var(--grad); color: white; }
-  table th, table td { padding: 10px 16px; border: none; }
-  table th:first-child { border-top-left-radius: 8px; }
-  table th:last-child { border-top-right-radius: 8px; }
-  table tbody tr:last-child td:first-child { border-bottom-left-radius: 8px; }
-  table tbody tr:last-child td:last-child { border-bottom-right-radius: 8px; }
-  table tbody tr:nth-child(odd) { background: #f8fafc; }
-  table tbody tr:nth-child(even) { background: #f1f5f9; }
-
-  blockquote {
-    background: linear-gradient(90deg, rgba(148,116,252,0.1) 0%, transparent 100%);
-    border-left: 4px solid var(--color-purple);
-    padding: 12px 20px;
-    margin: 16px 0;
-    border-radius: 0 8px 8px 0;
-    font-style: italic;
-    color: #64748b;
-  }
-
-  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
-
-  section.cover {
-    justify-content: flex-end;
-    align-items: flex-start;
-    text-align: left;
-    background: linear-gradient(135deg, rgba(13, 157, 252, 0.15) 0%, transparent 50%), linear-gradient(225deg, rgba(148, 116, 252, 0.2) 0%, transparent 50%), linear-gradient(315deg, rgba(247, 90, 95, 0.1) 0%, transparent 50%), var(--color-dark);
-    color: white;
-    padding: 60px;
-    overflow: hidden;
-  }
-
-  section.cover::before {
-    content: "";
-    position: absolute;
-    top: 0; right: 0;
-    width: 100%; height: 100%;
-    background: radial-gradient(ellipse 80% 50% at 100% 0%, rgba(13, 157, 252, 0.3) 0%, transparent 50%), radial-gradient(ellipse 60% 40% at 80% 100%, rgba(148, 116, 252, 0.25) 0%, transparent 50%);
-  }
-
-  section.cover::after {
-    content: "";
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 4px;
-    background: var(--grad-accent);
-  }
-
-  section.cover h1 { font-size: 3em; color: white; border: none; padding: 0; margin-bottom: 8px; position: relative; z-index: 1; }
-  section.cover h2 { color: var(--color-blue); font-size: 1.5em; font-weight: 600; border: none; padding: 0; margin: 0 0 32px 0; position: relative; z-index: 1; }
-  section.cover p { color: rgba(255,255,255,0.6); font-size: 1em; margin: 0; position: relative; z-index: 1; }
-
-  section.section-divider {
-    justify-content: center;
-    align-items: flex-start;
-    padding-left: 80px;
-    background: linear-gradient(135deg, rgba(13, 157, 252, 0.1) 0%, transparent 40%), linear-gradient(315deg, rgba(148, 116, 252, 0.15) 0%, transparent 50%), var(--color-dark);
-    color: white;
-    overflow: hidden;
-  }
-
-  section.section-divider::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(ellipse 60% 50% at 100% 50%, rgba(148, 116, 252, 0.2) 0%, transparent 50%);
-  }
-
-  section.section-divider::after {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 4px;
-    background: var(--grad-accent);
-  }
-
-  section.section-divider h1 { font-size: 4em; background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; border: none; padding: 0; margin: 0; position: relative; z-index: 1; }
-  section.section-divider h2 { color: rgba(255,255,255,0.8); font-size: 1.4em; font-weight: 500; border: none; padding: 0; margin-top: 8px; position: relative; z-index: 1; }
-
-  section.closing {
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    background: linear-gradient(45deg, rgba(13, 157, 252, 0.1) 0%, transparent 40%), linear-gradient(135deg, rgba(148, 116, 252, 0.15) 0%, transparent 50%), linear-gradient(225deg, rgba(247, 90, 95, 0.1) 0%, transparent 40%), linear-gradient(315deg, rgba(13, 157, 252, 0.1) 0%, transparent 40%), var(--color-dark);
-    color: white;
-    overflow: hidden;
-  }
-
-  section.closing::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(ellipse 50% 80% at 50% 50%, rgba(148, 116, 252, 0.15) 0%, transparent 60%);
-  }
-
-  section.closing::after {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 4px;
-    background: var(--grad-accent);
-  }
-
-  section.closing h1 { font-size: 2.8em; color: white; border: none; position: relative; z-index: 1; }
-  section.closing p { font-size: 1.2em; color: var(--color-blue); position: relative; z-index: 1; }
-
-  footer { font-size: 0.7em; color: #94a3b8; }
-
-  img[alt~="center"] { display: block; margin: 0 auto; }
 ---
 
 <!-- _class: cover -->
@@ -293,7 +86,7 @@ LangChain 기반 AI 에이전트 구축
 
 # Agentic AI의 4가지 핵심 능력
 
-![center width:500px](images/agentic-ai-components.png)
+![center width:850px](images/agentic-ai-components.png)
 
 <!-- |    Planning    | Reflection |  Memory   |   Tools   |
 | :------------: | :--------: | :-------: | :-------: |
@@ -371,7 +164,7 @@ print(response.content)
 사용자 → Agent(LLM) → [Planning | Reflection | Memory | Tools | RAG]
 -->
 
-![center width:1000px](images/single-agent-architecture.png)
+![center height:750px](images/single-agent-architecture.png)
 
 ---
 
@@ -619,7 +412,7 @@ LLM은 기본적으로 _상태가 없음_ (Stateless)
 계층 구조: Working Memory ↔ Long-term Memory (Vector DB + Key-Value Store)
 -->
 
-![center height:500px](images/memory-architecture.png)
+![center height:750px](images/memory-architecture.png)
 
 ---
 
