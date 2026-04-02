@@ -36,7 +36,7 @@ LangChain 기반 AI 에이전트 구축
 </div>
 <div>
 
-### Part 2: 핵심 구성요소
+### Part 2: 구성요소
 
 3. Planning & CoT (계획 + 추론)
 4. Tool Use (실행)
@@ -84,14 +84,11 @@ LangChain 기반 AI 에이전트 구축
 
 ---
 
-# Agentic AI의 4가지 핵심 능력
+<!-- _class: center -->
+
+# Agentic AI의 4대 구성요소
 
 ![center width:850px](images/agentic-ai-components.png)
-
-<!-- |    Planning    | Reflection |  Memory   |   Tools   |
-| :------------: | :--------: | :-------: | :-------: |
-|   목표 분해    | 자가 평가  | 맥락 유지 | 외부 연동 |
-| 실행 순서 결정 | 오류 수정  | 과거 학습 | 기능 확장 | -->
 
 ---
 
@@ -112,7 +109,7 @@ LLM 기반 애플리케이션 개발을 위한 _오픈소스 프레임워크_
 <div class="columns">
 <div>
 
-### 핵심 특징
+### 특징
 
 - 컴포넌트를 _체인(Chain)_ 형태로 연결
 - 에이전트, 메모리, 툴 추상화 제공
@@ -121,7 +118,7 @@ LLM 기반 애플리케이션 개발을 위한 _오픈소스 프레임워크_
 </div>
 <div>
 
-### 주요 구성요소
+### 구성요소
 
 - **Models**: LLM 연동
 - **Prompts**: 템플릿 관리
@@ -158,11 +155,7 @@ print(response.content)
 
 # 싱글 에이전트 아키텍처
 
-<!--
-[IMAGE] images/single-agent-architecture.png
-위에서 아래로 흐르는 플로우차트:
-사용자 → Agent(LLM) → [Planning | Reflection | Memory | Tools | RAG]
--->
+<!-- _class: center -->
 
 ![center height:750px](images/single-agent-architecture.png)
 
@@ -192,7 +185,7 @@ print(response.content)
 
 > "서울 날씨를 확인하고, 비가 오면 실내 데이트 코스를 추천해줘"
 
-### 에이전트의 계획 수립
+### 에이전트가 생성한 계획
 
 ```
 1. 서울 현재 날씨 API 호출
@@ -232,11 +225,9 @@ plan = planning_chain.invoke({"task": "최신 AI 논문을 찾아 요약해줘"}
 
 LLM이 *단계별로 추론*하도록 유도하는 프롬프팅 기법
 
-### 핵심 아이디어
-
 > "Let's think step by step"
 
-### CoT의 효과
+### 비교
 
 | 직접 답변        | Chain of Thought                  |
 | ---------------- | --------------------------------- |
@@ -313,7 +304,7 @@ cot_chain = cot_prompt | llm
 
 - LLM만으로는 불가능한 작업 수행 (검색, 계산, 파일 처리 등)
 - 실시간 정보 접근 및 외부 시스템 연동
-- 에이전트의 능력을 무한히 확장 가능
+- 에이전트 능력 확장의 기반
 
 ---
 
@@ -390,7 +381,7 @@ LLM은 기본적으로 _상태가 없음_ (Stateless)
 - 사용자 선호도나 과거 작업 결과 활용 불가
 - 연속적이고 맥락 있는 대화가 어려움
 
-> 메모리를 통해 _맥락 유지_, _개인화_, _학습_ 가능
+> 메모리로 _맥락 유지_, _개인화_, _학습_ 구현
 
 ---
 
@@ -405,12 +396,9 @@ LLM은 기본적으로 _상태가 없음_ (Stateless)
 
 ---
 
-# 메모리 아키텍처
+<!-- _class: center -->
 
-<!--
-[IMAGE] images/memory-architecture.png
-계층 구조: Working Memory ↔ Long-term Memory (Vector DB + Key-Value Store)
--->
+# 메모리 아키텍처
 
 ![center height:750px](images/memory-architecture.png)
 
@@ -476,29 +464,11 @@ _검색(Retrieval)_ + _생성(Generation)_ 결합
 
 ---
 
+<!-- _class: center -->
+
 # RAG 아키텍처
 
-<!--
-[IMAGE] images/rag-architecture.png
-Query → Embedding → Vector DB → Top-K → Prompt+Context → LLM → Response
--->
-
-```
-┌────────┐    ┌───────────┐    ┌───────────┐
-│ Query  │ →  │ Embedding │ →  │ Vector DB │
-│ (질문) │    │   Model   │    │  Search   │
-└────────┘    └───────────┘    └─────┬─────┘
-                                     │
-                              ┌──────↓──────┐
-                              │  관련 문서   │
-                              │  (Top-K)    │
-                              └──────┬──────┘
-                                     │
-┌────────┐    ┌───────────┐    ┌─────↓──────┐
-│  응답  │ ←  │    LLM    │ ←  │  Prompt +  │
-│        │    │  Generate │    │  Context   │
-└────────┘    └───────────┘    └────────────┘
-```
+![center height:600px](images/rag-architecture.png)
 
 ---
 
@@ -570,17 +540,14 @@ rag_chain = (
 <div class="columns">
 <div>
 
-### 핵심 프로세스
+### 프로세스
 
-```
-생성 → 평가 → 수정 → 재평가
-         ↑____________|
-```
+![center width:900px](images/self-reflection-process.png)
 
 </div>
 <div>
 
-### 활용 사례
+### 적용 사례
 
 - 코드 생성 후 버그 검토
 - 답변의 정확성 검증
@@ -592,24 +559,11 @@ rag_chain = (
 
 ---
 
+<!-- _class: center -->
+
 # Self-Reflection 패턴
 
-```
-┌─────────────────────────────────────────────┐
-│                에이전트                       │
-│                                              │
-│   ┌──────────┐       ┌───────────────┐      │
-│   │ 초기 응답  │  ───→ │  자가 평가     │      │
-│   │ 생성      │       │  (Critic LLM)  │      │
-│   └──────────┘       └───────┬───────┘      │
-│                              │              │
-│              ┌───────────────┼───────────┐  │
-│              ↓                           ↓  │
-│        [ 만족 → 반환 ]            [ 수정 필요 ]  │
-│                                      ↓      │
-│                               [ 재생성 루프 ]  │
-└─────────────────────────────────────────────┘
-```
+![center width:1000px](images/self-reflection-loop.png)
 
 ---
 
@@ -727,7 +681,7 @@ agent = workflow.compile()
 
 ---
 
-# 정리: 싱글 에이전트 핵심 요소
+# 정리
 
 |    구성요소    | 역할              | LangChain 구현     |
 | :------------: | ----------------- | ------------------ |
@@ -768,9 +722,9 @@ agent = workflow.compile()
 
 # Q&A
 
-<!--
-[IMAGE] images/qna.png (optional)
--->
+<!-- _class: center -->
+
+![center width:800px](images/qna.jpg)
 
 ---
 
