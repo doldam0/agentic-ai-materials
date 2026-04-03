@@ -289,6 +289,7 @@ planning_prompt = ChatPromptTemplate.from_messages([
 
 planning_chain = planning_prompt | llm
 plan = planning_chain.invoke({"task": "최신 AI 논문을 찾아 요약해줘"})
+print(plan.content)
 ```
 
 ---
@@ -310,7 +311,7 @@ LLM이 *단계별로 추론*하도록 유도하는 프롬프팅 기법
 
 # CoT 예시
 
-> 가게에 사과 23개가 있고, 7개를 팔고 15개를 더 받았다면?
+> 가게에 사과 23개가 있다. 7개를 팔고 15개를 더 받았다면?
 
 <div class="columns">
 <div>
@@ -356,6 +357,8 @@ cot_prompt = ChatPromptTemplate.from_messages([
 ])
 
 cot_chain = cot_prompt | llm
+response = cot_chain.invoke({"question": "가게에 사과 23개가 있다. 7개를 팔고 15개를 더 받았다면?"})
+print(response.content)
 ```
 
 ---
@@ -420,10 +423,10 @@ tools = [search_weather, calculate]
 # 에이전트에 툴 연결 (LangGraph)
 
 ```python
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
-# ReAct 에이전트 생성 (LangGraph 방식)
-agent = create_react_agent(llm, tools)
+# ReAct 에이전트 생성
+agent = create_agent(llm, tools)
 
 # 실행 - 자동으로 적절한 도구 선택 및 호출
 result = agent.invoke({
@@ -479,20 +482,24 @@ LLM은 기본적으로 _상태가 없음_ (Stateless)
 # 메모리 구현
 
 ```python
+from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.prebuilt import create_react_agent
 
 # 메모리 체크포인터 생성
 memory = MemorySaver()
 
 # 메모리가 있는 에이전트 생성
-agent = create_react_agent(llm, tools, checkpointer=memory)
+agent = create_agent(llm, tools, checkpointer=memory)
 
 # 세션 ID로 대화 컨텍스트 유지
 config = {"configurable": {"thread_id": "user-123"}}
 
-agent.invoke({"messages": [("user", "내 이름은 철수야")]}, config)
-agent.invoke({"messages": [("user", "내 이름이 뭐라고 했지?")]}, config)
+result = agent.invoke({"messages": [("user", "내 이름은 철수야")]}, config)
+print(result["messages"][-1].content)
+# → "알겠습니다. 철수님, 반갑습니다!"
+
+result = agent.invoke({"messages": [("user", "내 이름이 뭐라고 했지?")]}, config)
+print(result["messages"][-1].content)
 # → "철수라고 하셨습니다"
 ```
 
@@ -595,6 +602,16 @@ rag_chain = (
 
 ---
 
+# RAG 구현 - 검색 및 생성 (계속)
+
+```python
+# RAG 체인 실행
+response = rag_chain.invoke("문서의 주요 내용이 뭐야?")
+print(response.content)
+```
+
+---
+
 <!-- _class: section-divider -->
 <!-- _paginate: false -->
 <!-- _footer: "" -->
@@ -639,49 +656,72 @@ rag_chain = (
 
 ---
 
-# Self-Reflection 구현
+# Reflexion 구현 - 프롬프트 정의
 
 ```python
-reflection_prompt = ChatPromptTemplate.from_messages([
-    ("system", """당신은 AI 응답을 평가하는 비평가입니다.
-    다음 기준으로 응답을 평가하세요:
-    1. 정확성: 사실에 기반한가?
-    2. 완전성: 질문에 충분히 답했는가?
-    3. 명확성: 이해하기 쉬운가?
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
-    점수 (1-10)와 개선 제안을 제공하세요."""),
-    ("human", "원본 질문: {question}\n응답: {response}")
+# 초기 응답 생성 프롬프트
+generator_prompt = ChatPromptTemplate.from_messages([
+    ("system", "질문에 상세하고 정확하게 답변하세요."),
+    ("human", "{question}")
 ])
 
-def reflect_and_improve(question, response):
-    critique = (reflection_prompt | llm).invoke({
-        "question": question, "response": response
-    })
-    return critique
+# 평가 프롬프트
+evaluator_prompt = ChatPromptTemplate.from_messages([
+    ("system", """응답을 평가하고 JSON 형식으로 출력하세요.
+    {{"score": 1-10, "feedback": "개선점"}}"""),
+    ("human", "질문: {question}\n응답: {response}")
+])
+
+# 개선 프롬프트
+improver_prompt = ChatPromptTemplate.from_messages([
+    ("system", "피드백을 반영하여 응답을 개선하세요."),
+    ("human", "질문: {question}\n이전 응답: {response}\n피드백: {feedback}")
+])
 ```
 
 ---
 
-# Reflexion 프레임워크
+# Reflexion 구현 - 실행
 
 ```python
-MAX_ITERATIONS = 3
+import json
 
-def reflexion_loop(task):
-    response = generate_initial_response(task)
+def reflexion(question, max_iterations=3):
+    # 초기 응답 생성
+    response = (generator_prompt | llm | StrOutputParser()).invoke(
+        {"question": question}
+    )
 
-    for i in range(MAX_ITERATIONS):
-        evaluation = evaluate_response(response)
+    for i in range(max_iterations):
+        # 평가
+        eval_result = (evaluator_prompt | llm | StrOutputParser()).invoke(
+            {"question": question, "response": response}
+        )
+        evaluation = json.loads(eval_result)
 
-        if evaluation.score >= 8:  # 품질 기준 충족
-            return response
+        print(f"[{i+1}차 평가] 점수: {evaluation['score']}")
+        if evaluation["score"] >= 8:
+            break
+```
 
-        # 피드백을 반영하여 재생성
-        response = improve_response(
-            task, response, evaluation.feedback
+---
+
+# Reflexion 구현 - 실행 (계속)
+
+```python
+        # 개선
+        response = (improver_prompt | llm | StrOutputParser()).invoke(
+            {"question": question, "response": response,
+             "feedback": evaluation["feedback"]}
         )
 
-    return response  # 최대 반복 후 최선의 결과 반환
+    return response
+
+result = reflexion("파이썬의 장점 3가지를 설명해줘")
+print(result)
 ```
 
 ---
@@ -696,59 +736,125 @@ def reflexion_loop(task):
 
 ---
 
-# LangGraph 에이전트 상태 정의
+# LangGraph 통합 실습
 
 ```python
-from langgraph.graph import StateGraph, END
-from typing import TypedDict
+from langchain_core.tools import tool
 
-class AgentState(TypedDict):
-    task: str
-    plan: list[str]
-    current_step: int
-    results: list[str]
-    final_answer: str
+@tool
+def search_knowledge(query: str) -> str:
+    """knowledge_base에서 관련 정보를 검색합니다."""
+    docs = retriever.invoke(query)
+    return "\n".join([d.page_content for d in docs])
 
-def planner(state: AgentState) -> AgentState:
-    """작업 계획 수립"""
-    plan = planning_chain.invoke({"task": state["task"]})
-    return {"plan": parse_plan(plan), "current_step": 0}
+@tool
+def search_weather(city: str) -> str:
+    """도시의 현재 날씨를 검색합니다."""
+    return f"{city}의 날씨: 맑음, 20°C"
 
-def executor(state: AgentState) -> AgentState:
-    """현재 단계 실행"""
-    step = state["plan"][state["current_step"]]
-    result = execute_step(step)
-    return {"results": state["results"] + [result]}
+@tool
+def calculate(expression: str) -> str:
+    """수학 표현식을 계산합니다."""
+    return f"결과: {eval(expression)}"
+
+tools = [search_knowledge, search_weather, calculate]
 ```
 
 ---
 
-# LangGraph 워크플로우 구성
-
-<!--
-[IMAGE] images/langgraph-workflow.png
-START → Planner → Executor → Reflector → 조건부 분기 → END or Loop
--->
+# LangGraph 통합 실습 (계속)
 
 ```python
-def reflector(state: AgentState) -> AgentState:
-    """결과 검증 및 평가"""
-    evaluation = reflection_chain.invoke({
-        "task": state["task"], "results": state["results"]
-    })
-    return {"evaluation": evaluation}
+from langchain_core.prompts import ChatPromptTemplate
 
-# 그래프 구성
-workflow = StateGraph(AgentState)
-workflow.add_node("planner", planner)
-workflow.add_node("executor", executor)
-workflow.add_node("reflector", reflector)
+# CoT 평가 프롬프트
+cot_eval = ChatPromptTemplate.from_messages([
+    ("system", """이 응답은 도구(검색/계산)를 사용한 에이전트가 생성했습니다.
+    응답에 포함된 수치와 정보는 실제 도구 실행 결과입니다.
 
-workflow.set_entry_point("planner")
-workflow.add_edge("planner", "executor")
-workflow.add_edge("executor", "reflector")
+    단계별로 분석하세요:
+    1. 질문의 요구사항을 모두 충족했는가?
+    2. 응답이 간결하고 명확한가?
+    3. 불필요한 설명이 있는가?
 
-agent = workflow.compile()
+    주의: 도구가 반환한 데이터의 정확성은 의심하지 마세요.
+    JSON 형식으로 출력: {{"score": 1-10, "feedback": "개선점"}}"""),
+    ("human", "질문: {question}\n응답: {response}")
+])
+```
+
+---
+
+# LangGraph 통합 실습 (계속)
+
+```python
+# CoT 개선 프롬프트
+cot_improve = ChatPromptTemplate.from_messages([
+    ("system", """단계별로 생각한 후, 최종 개선된 응답만 출력하세요:
+    1. 피드백 분석: 어떤 점을 개선해야 하는가?
+    2. 개선 방향: 간결성, 명확성 위주로 수정
+    3. 응답 다듬기: 핵심 정보(수치, 계산 결과)는 반드시 유지
+
+    주의사항:
+    - 원본 응답의 수치와 결과를 절대 변경하지 마세요
+    - "검색할 수 없다", "확인이 필요하다" 등의 표현을 추가하지 마세요
+    - 분석 과정(1,2,3번)은 출력하지 말고, 최종 응답만 출력하세요"""),
+    ("human", "질문: {question}\n응답: {response}\n피드백: {feedback}")
+])
+```
+
+---
+
+# LangGraph 통합 실습 (계속)
+
+```python
+from langchain.agents import create_agent
+from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.messages import AIMessage
+import json
+
+memory = MemorySaver()
+agent = create_agent(llm, tools, checkpointer=memory)
+
+def agent_with_reflexion(query, config, max_iter=2):
+    result = agent.invoke({"messages": [("user", query)]}, config)
+    response = result["messages"][-1].content
+    for i in range(max_iter):
+        eval_str = (cot_eval | llm | StrOutputParser()).invoke(
+            {"question": query, "response": response})
+        try:
+            ev = json.loads(eval_str)
+        except json.JSONDecodeError:
+            break
+        if ev["score"] >= 8:
+            break
+```
+
+---
+
+# LangGraph 통합 실습 (계속)
+
+```python
+        response = (cot_improve | llm | StrOutputParser()).invoke(
+            {"question": query, "response": response, "feedback": ev["feedback"]})
+
+    # 개선된 응답을 메모리에 저장
+    agent.update_state(config, {"messages": [AIMessage(content=response)]})
+    return response
+
+config = {"configurable": {"thread_id": "session-1"}}
+
+# 1차: RAG + Tool Use + Reflexion
+result = agent_with_reflexion(
+    "내 이름은 민수야. 서울의 연평균 기온을 검색하고 화씨로 변환해줘",
+    config)
+print(result)
+
+# 2차: Memory 활용 (이름 + 계산 결과 기억)
+result = agent_with_reflexion(
+    "내 이름이 뭐였지? 그리고 아까 계산한 화씨 온도는?",
+    config)
+print(result)
 ```
 
 ---
