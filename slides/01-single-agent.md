@@ -210,16 +210,12 @@ $env:OPENAI_API_KEY="sk-..."
 # LangChain 기본 사용법
 
 ```python
-# 설치
-pip install langchain langchain-core langchain-openai langchain-community langchain-text-splitters langgraph chromadb
-
-# 기본 설정
 from langchain_openai import ChatOpenAI
 
+# OPENAI_API_KEY 환경 변수를 자동으로 사용
 llm = ChatOpenAI(
     model="gpt-4o",
-    temperature=0.7,
-    api_key="your-api-key"
+    temperature=0.7
 )
 
 # 간단한 호출
