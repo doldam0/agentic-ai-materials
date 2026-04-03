@@ -131,7 +131,83 @@ LLM 기반 애플리케이션 개발을 위한 _오픈소스 프레임워크_
 
 ---
 
-# LangChain 설치 및 기본 설정
+# Conda 설치
+
+<div class="columns">
+<div>
+
+### Windows
+
+1. [Miniconda 다운로드](https://docs.conda.io/en/latest/miniconda.html)
+2. 설치 파일 실행
+3. "Add to PATH" 체크
+
+### macOS
+
+```bash
+brew install miniconda
+```
+
+</div>
+<div>
+
+### Linux
+
+```bash
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+source ~/.bashrc
+```
+
+### 설치 확인
+
+```bash
+conda --version
+```
+
+</div>
+</div>
+
+---
+
+# 개발 환경 설정
+
+```bash
+# 1. Conda 환경 생성
+conda create -n agentic-ai python=3.13 -y
+
+# 2. 환경 활성화
+conda activate agentic-ai
+
+# 3. 필수 패키지 설치
+pip install langchain langchain-core langchain-openai langchain-community \
+    langchain-text-splitters langgraph chromadb
+```
+
+---
+
+# OpenAI API 키 발급
+
+### 발급 절차
+
+1. [OpenAI Platform](https://platform.openai.com) 접속 및 로그인
+2. 우측 상단 프로필 → **API keys** 클릭
+3. **Create new secret key** 버튼 클릭
+4. 키 이름 입력 후 생성 → _키 복사 (한 번만 표시됨!)_
+
+### 환경 변수 설정
+
+```bash
+# macOS/Linux
+export OPENAI_API_KEY="sk-..."
+
+# Windows (PowerShell)
+$env:OPENAI_API_KEY="sk-..."
+```
+
+---
+
+# LangChain 기본 사용법
 
 ```python
 # 설치
