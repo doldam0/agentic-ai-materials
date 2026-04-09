@@ -309,11 +309,7 @@ handoff = HandoffMessage(source="travel_agent", target="refund_agent",
 
 Agent들이 _고정된 순서로 번갈아_ 발언하는 가장 단순한 Team 패턴
 
-```
-┌──────────┐     ┌──────────┐     ┌──────────┐
-│ Agent A  │ ──→ │ Agent B  │ ──→ │ Agent C  │ ──→ (다시 A로)
-└──────────┘     └──────────┘     └──────────┘
-```
+![center width:850px](images/round-robin-group-chat.png)
 
 ### 특징
 
@@ -352,29 +348,9 @@ await Console(team.run_stream(task="가을을 주제로 짧은 시를 써줘"))
 
 # RoundRobin 실행 흐름
 
-```
-사용자: "가을을 주제로 짧은 시를 써줘"
-    │
-    ↓
-┌─────────┐  "단풍잎이 물드는 계절..."
-│  writer  │ ─────────────────────────→
-└─────────┘
-    │
-    ↓
-┌─────────┐  "운율을 개선하면 좋겠습니다..."
-│  critic  │ ─────────────────────────→
-└─────────┘
-    │
-    ↓
-┌─────────┐  "수정된 시: 붉게 물든..."
-│  writer  │ ─────────────────────────→
-└─────────┘
-    │
-    ↓
-┌─────────┐  "APPROVE"  ← 종료 조건 충족!
-│  critic  │ ─────────────────────────→
-└─────────┘
-```
+<!-- _class: center -->
+
+![center width:1250px](images/round-robin-execution.png)
 
 ---
 
@@ -392,17 +368,7 @@ await Console(team.run_stream(task="가을을 주제로 짧은 시를 써줘"))
 
 LLM이 대화 맥락을 분석하여 *다음 발언자를 동적으로 선택*하는 패턴
 
-```
-                  ┌──────────────────┐
-                  │  Selector (LLM)  │
-                  │  "누가 적합한가?" │
-                  └────────┬─────────┘
-              ┌────────────┼────────────┐
-              ↓            ↓            ↓
-         ┌────────┐  ┌─────────┐  ┌──────────┐
-         │Planner │  │Searcher │  │ Analyst  │
-         └────────┘  └─────────┘  └──────────┘
-```
+![center width:600px](images/selector-group-chat.png)
 
 ### 핵심 특징
 
@@ -517,15 +483,7 @@ team = SelectorGroupChat(
 
 Agent가 스스로 *다음 담당자에게 핸드오프*하는 분산형 패턴
 
-```
-┌─────────────┐  HandoffMessage   ┌──────────────┐
-│ travel_agent │ ───────────────→  │flights_refund │
-│              │                   │              │
-│  handoffs:   │  ←───────────────  │  handoffs:   │
-│  [refund,    │    HandoffMessage │  [travel,    │
-│   user]      │                   │   user]      │
-└─────────────┘                   └──────────────┘
-```
+![center width:1200px](images/swarm.png)
 
 ### 핵심 특징
 
@@ -608,32 +566,11 @@ async def main():
 
 ---
 
+<!-- _class: center -->
+
 # Swarm 실행 흐름
 
-```
-사용자: "항공편 환불을 요청합니다"
-    │
-    ↓
-┌──────────────┐  "항공편 ID가 필요합니다"
-│ travel_agent │ ─→ HandoffMessage(target="user")   ← 사용자에게 핸드오프
-└──────────────┘
-    │
-    ↓  사용자 입력: "FL-12345"
-    │
-┌──────────────┐  "환불 처리를 진행하겠습니다"
-│ travel_agent │ ─→ HandoffMessage(target="flights_refunder")
-└──────────────┘
-    │
-    ↓
-┌────────────────┐  refund_flight("FL-12345") 호출
-│flights_refunder│ ─→ HandoffMessage(target="travel_agent")
-└────────────────┘
-    │
-    ↓
-┌──────────────┐  "환불이 완료되었습니다. TERMINATE"
-│ travel_agent │
-└──────────────┘
-```
+![center width:1300px](images/swarm-execution.png)
 
 ---
 
@@ -696,41 +633,18 @@ agent = AssistantAgent(
 
 ### `reflect_on_tool_use` 옵션
 
-| 값        | 동작                                    |
-| --------- | --------------------------------------- |
-| `False`   | 도구 결과를 **그대로** 메시지로 반환     |
-| `True`    | LLM이 도구 결과를 **자연어로 정리**하여 반환 |
-
+| 값      | 동작                                         |
+| ------- | -------------------------------------------- |
+| `False` | 도구 결과를 **그대로** 메시지로 반환         |
+| `True`  | LLM이 도구 결과를 **자연어로 정리**하여 반환 |
 
 ---
 
+<!-- _class: center -->
+
 # Tool 실행 흐름
 
-```
-사용자: "서울 날씨 알려주고, 234 * 567 계산해줘"
-    │
-    ↓
-┌──────────────────────────────────────┐
-│           AssistantAgent (LLM)       │
-│                                      │
-│  1. 요청 분석                         │
-│  2. get_weather("서울") 호출 결정      │
-│  3. calculate("234 * 567") 호출 결정  │
-└──────────────────┬───────────────────┘
-                   │
-         ┌─────────┴─────────┐
-         ↓                   ↓
-   get_weather("서울")  calculate("234*567")
-   → "서울: 맑음, 22°C"  → "결과: 132678"
-         │                   │
-         └─────────┬─────────┘
-                   ↓
-┌──────────────────────────────────────┐
-│  reflect_on_tool_use=True            │
-│  → "서울은 맑고 22°C입니다.            │
-│     234×567의 결과는 132,678입니다."   │
-└──────────────────────────────────────┘
-```
+![center width:1300px](images/tool-execution.png)
 
 ---
 
@@ -847,12 +761,12 @@ agent = AssistantAgent(
 
 # FunctionTool vs 함수 직접 전달
 
-| 항목           | 함수 직접 전달         | FunctionTool                     |
-| -------------- | ---------------------- | -------------------------------- |
-| **이름**       | 함수명 자동 사용       | `name` 파라미터로 커스터마이즈     |
-| **설명**       | 독스트링 자동 사용     | `description`으로 상세 설명 가능  |
-| **스키마**     | 타입 힌트에서 자동 추론 | 동일 (자동 추론)                  |
-| **사용 시점**  | 빠른 프로토타이핑      | 프로덕션, 설명이 중요한 도구      |
+| 항목          | 함수 직접 전달          | FunctionTool                     |
+| ------------- | ----------------------- | -------------------------------- |
+| **이름**      | 함수명 자동 사용        | `name` 파라미터로 커스터마이즈   |
+| **설명**      | 독스트링 자동 사용      | `description`으로 상세 설명 가능 |
+| **스키마**    | 타입 힌트에서 자동 추론 | 동일 (자동 추론)                 |
+| **사용 시점** | 빠른 프로토타이핑       | 프로덕션, 설명이 중요한 도구     |
 
 ```python
 # 간단한 도구 → 함수 직접 전달
@@ -875,7 +789,7 @@ agent = AssistantAgent("a", tools=[weather_tool], model_client=model_client)
 
 # 도구 에러 처리 패턴
 
-도구 실행 실패 시 _에러 메시지를 반환_하면 LLM이 대처 가능
+도구 실행 실패 시 *에러 메시지를 반환*하면 LLM이 대처 가능
 
 ```python
 import httpx
@@ -902,162 +816,11 @@ async def fetch_stock_price(ticker: str) -> str:
 
 # 도구 조합 패턴: 파이프라인
 
-여러 도구를 _순차적으로 호출_하는 워크플로우 구성
+여러 도구를 *순차적으로 호출*하는 워크플로우 구성
 
-```
-사용자: "AAPL 주가를 조회하고 한국어로 요약해줘"
-    │
-    ↓
-┌───────────────┐  tool call 1      ┌────────────────┐
-│ AssistantAgent│ ─────────────────→ │fetch_stock_price│
-│               │                   │("AAPL")         │
-│               │ ←──────────────── │→ "AAPL: $198.50"│
-│               │                   └────────────────┘
-│               │  tool call 2      ┌────────────────┐
-│               │ ─────────────────→ │  translate     │
-│               │                   │("AAPL: $198",  │
-│               │ ←──────────────── │ "ko")           │
-│               │                   └────────────────┘
-│               │
-│  reflect: "애플 주가는 198.50달러입니다."
-└───────────────┘
-```
+![center width:1000px](images/tool-composition.png)
 
 > Agent가 도구 결과를 보고 **자율적으로** 다음 도구 호출 여부를 판단
-
----
-
-<!-- _class: section-divider -->
-<!-- _paginate: false -->
-<!-- _footer: "" -->
-
-# 09
-
-## Human-in-the-Loop (사람 개입)
-
----
-
-# Human-in-the-Loop 패턴
-
-<div class="columns">
-<div>
-
-### 전략 A: 대화 중 개입
-
-`UserProxyAgent`를 Team에 포함
-
-```python
-team = RoundRobinGroupChat(
-    [assistant, user_proxy],
-    termination_condition=termination,
-)
-```
-
-- Agent 차례마다 사람 입력 대기
-- 실시간 피드백 제공 가능
-
-</div>
-<div>
-
-### 전략 B: 실행 후 피드백
-
-`max_turns=1`로 실행 후 루프
-
-```python
-team = RoundRobinGroupChat(
-    [assistant], max_turns=1,
-)
-task = "시를 써줘"
-while True:
-    await Console(
-        team.run_stream(task=task)
-    )
-    task = input("피드백: ")
-    if task == "exit":
-        break
-```
-
-</div>
-</div>
-
----
-
-# Human-in-the-Loop: 대화 중 개입 실습
-
-```python
-from autogen_agentchat.agents import AssistantAgent, UserProxyAgent
-from autogen_agentchat.conditions import TextMentionTermination
-from autogen_agentchat.teams import RoundRobinGroupChat
-from autogen_agentchat.ui import Console
-
-assistant = AssistantAgent(
-    "assistant",
-    model_client=model_client,
-    system_message="사용자와 대화하며 요청을 수행하세요.",
-)
-user_proxy = UserProxyAgent("user_proxy", input_func=input)
-
-termination = TextMentionTermination("APPROVE")
-team = RoundRobinGroupChat(
-    [assistant, user_proxy],
-    termination_condition=termination,
-)
-
-# 실행: assistant → user_proxy(입력 대기) → assistant → ...
-await Console(team.run_stream(task="바다를 주제로 4줄 시를 써줘"))
-```
-
----
-
-# Human-in-the-Loop: Swarm에서의 사용자 핸드오프
-
-Swarm 패턴에서 _사용자 확인이 필요한 시점에 자동 핸드오프_ -> 중요한 결정 전에 사용자 승인을 받아야함
-
-```python
-from autogen_agentchat.agents import UserProxyAgent
-
-user = UserProxyAgent("user", input_func=input)
-order_agent = AssistantAgent(
-    "order_agent", model_client=model_client,
-    handoffs=["payment_agent", "user"],    # 사용자에게도 핸드오프 가능
-    system_message="""주문을 처리합니다. 결제 전 반드시 user에게 핸드오프하여 주문 내용을 확인받으세요.""",
-)
-
-payment_agent = AssistantAgent(
-    "payment_agent", model_client=model_client,
-    handoffs=["order_agent", "user"],
-    tools=[process_payment],
-    system_message="결제를 처리합니다.",
-)
-```
----
-
-# Human-in-the-Loop 실행 흐름 (Swarm)
-
-```
-사용자: "노트북 1대 주문해줘"
-    │
-    ↓
-┌──────────────┐  "주문 내용: 노트북 1대, 1,200,000원"
-│ order_agent  │ ─→ HandoffMessage(target="user")   ← 확인 요청
-└──────────────┘
-    │
-    ↓  사용자: "네, 진행해주세요"
-    │
-┌──────────────┐  "결제를 진행합니다"
-│ order_agent  │ ─→ HandoffMessage(target="payment_agent")
-└──────────────┘
-    │
-    ↓
-┌───────────────┐  process_payment() 호출
-│ payment_agent │ ─→ HandoffMessage(target="order_agent")
-└───────────────┘
-    │
-    ↓
-┌──────────────┐  "주문이 완료되었습니다. TERMINATE"
-│ order_agent  │
-└──────────────┘
-```
 
 ---
 
@@ -1133,22 +896,11 @@ team = RoundRobinGroupChat([agent_a, agent_b], termination_condition=external)
 
 ### 실전 설계 원칙
 
-```
-┌─────────────────────────────────────────────────┐
-│          Termination 조건 설계 체크리스트          │
-│                                                   │
-│  ✓ 정상 종료: TextMentionTermination("APPROVE")  │
-│    → Agent가 작업 완료를 명시적으로 선언            │
-│                                                   │
-│  ✓ 안전 장치: MaxMessageTermination(30)           │
-│    → 무한 루프 방지용 상한선                       │
-│                                                   │
-│  ✓ 시간 제한: TimeoutTermination(300)             │
-│    → 프로덕션 환경의 SLA 준수                      │
-│                                                   │
-│  항상 OR 조합으로 안전 장치를 포함하세요!           │
-└─────────────────────────────────────────────────┘
-```
+Termination 조건 설계 체크리스트:
+
+- 정상 종료: `TextMentionTermination("APPROVE")` → 에이전트가 작업 완료를 명시적으로 선언
+- 안전 장치: `MaxMessageTermination(30)` → 무한 루프 방지용 상한선
+- 시간 제한: `TimeoutTermination(300)` → 프로덕션 환경의 SLA 준수
 
 ---
 
@@ -1187,20 +939,6 @@ result = await Console(team.run_stream(task="새로운 작업을 시작합니다
 
 프로덕션 환경에서 _장기 실행 에이전트의 상태를 보존_
 
-```
-┌─────────────┐     저장      ┌─────────────┐
-│  실행 중인   │ ──────────→  │   JSON 파일  │
-│  Team 상태   │              │  또는 DB     │
-└─────────────┘              └──────┬──────┘
-                                    │
-                              복원  │
-                                    ↓
-                             ┌─────────────┐
-                             │  새 세션에서  │
-                             │  대화 재개    │
-                             └─────────────┘
-```
-
 ### 활용 시나리오
 
 - 서버 재시작 후 대화 재개
@@ -1238,6 +976,7 @@ result = await Console(team2.run_stream(task="결론 부분을 보강해줘"))
 # Agent 단위 상태 저장/복원
 
 ###
+
 ###
 
 <div class="columns">
@@ -1255,16 +994,17 @@ new_writer = AssistantAgent(
 )
 await new_writer.load_state(agent_state)
 ```
+
 </div>
 <div>
 
 ### 상태에 포함되는 것
 
-| 포함됨                | 포함되지 않음        |
-| --------------------- | -------------------- |
-| 대화 히스토리 (메시지) | `model_client` 설정   |
-| 모델 컨텍스트         | 도구 함수 정의       |
-| 에이전트 내부 상태     | `system_message`     |
+| 포함됨                 | 포함되지 않음       |
+| ---------------------- | ------------------- |
+| 대화 히스토리 (메시지) | `model_client` 설정 |
+| 모델 컨텍스트          | 도구 함수 정의      |
+| 에이전트 내부 상태     | `system_message`    |
 
 </div>
 </div>
@@ -1285,7 +1025,7 @@ await new_writer.load_state(agent_state)
 
 # 로깅 설정
 
-AutoGen의 내부 동작을 _로그로 추적_하여 디버깅
+AutoGen의 내부 동작을 *로그로 추적*하여 디버깅
 
 ```python
 import logging
@@ -1298,12 +1038,12 @@ logging.getLogger("autogen_core").setLevel(logging.DEBUG)
 
 ### 주요 로그 포인트
 
-| 로그 레벨 | 내용                             |
-| --------- | -------------------------------- |
-| `DEBUG`   | 메시지 송수신, 도구 호출 상세    |
-| `INFO`    | Agent 선택, 핸드오프 이벤트     |
-| `WARNING` | Termination 트리거, 재시도       |
-| `ERROR`   | LLM 호출 실패, 도구 실행 오류   |
+| 로그 레벨 | 내용                          |
+| --------- | ----------------------------- |
+| `DEBUG`   | 메시지 송수신, 도구 호출 상세 |
+| `INFO`    | Agent 선택, 핸드오프 이벤트   |
+| `WARNING` | Termination 트리거, 재시도    |
+| `ERROR`   | LLM 호출 실패, 도구 실행 오류 |
 
 ---
 
@@ -1372,21 +1112,14 @@ for msg in result.messages:
 
 > "코드를 분석하고 리뷰 의견을 제공하는 멀티 에이전트 팀"
 
-```
-┌───────────────────────────────────────────────────────┐
-│              SelectorGroupChat                         │
-│                                                        │
-│  ┌────────────┐  ┌──────────────┐  ┌───────────────┐ │
-│  │  Architect  │  │SecurityReview│  │CodeOptimizer │ │
-│  │  구조 분석   │  │  보안 검토    │  │  성능 최적화   │ │
-│  └────────────┘  └──────────────┘  └───────────────┘ │
-│                                                        │
-│  ┌────────────┐                                       │
-│  │ Summarizer │  → "REVIEW_COMPLETE" 시 종료           │
-│  │ 종합 리뷰   │                                       │
-│  └────────────┘                                       │
-└───────────────────────────────────────────────────────┘
-```
+## Agent 구성도
+
+| Agent                | 책임               | 사용 도구                   |
+| :------------------- | :----------------- | :-------------------------- |
+| **Architect**        | 구조 & 설계 패턴   | `count_lines()`             |
+| **SecurityReviewer** | 보안 취약점        | `check_security_patterns()` |
+| **CodeOptimizer**    | 성능 & 효율성      | (없음)                      |
+| **Summarizer**       | 종합 리뷰 & 마무리 | (없음)                      |
 
 ---
 
@@ -1465,7 +1198,7 @@ optimizer = AssistantAgent(
 
 # 코드 리뷰 팀 구현 (3/3): Team 구성 및 실행
 
-```python
+````python
 summarizer = AssistantAgent(
     "Summarizer",
     description="모든 리뷰 의견을 종합하여 최종 리뷰를 작성하는 에이전트.",
@@ -1492,31 +1225,55 @@ def get_user(user_id):
 """
 
 asyncio.run(Console(team.run_stream(task=f"다음 코드를 리뷰해주세요:\n```python\n{code_to_review}\n```")))
-```
+````
 
 ---
 
 # 코드 리뷰 실행 흐름 예시
 
-```
-[Architect]       count_lines() 호출 → "총 5줄, 함수 1개"
-                  "단일 함수에 DB 조회 + 인증 로직이 혼재.
-                   관심사 분리(SoC) 원칙 위반."
+<div class="columns">
+<div>
 
-[SecurityReviewer] check_security_patterns() 호출
-                  "🔴 eval() 사용 - 코드 인젝션 위험
-                   🔴 SQL 인젝션 가능성
-                   🔴 하드코딩된 비밀번호"
+### `Architect`
 
-[CodeOptimizer]   "SELECT * 대신 필요한 컬럼만 조회.
-                   파라미터 바인딩으로 쿼리 최적화 가능."
+- `count_lines()` 호출
+- 총 5줄, 함수 1개
+- 단일 함수에 DB 조회 + 인증 로직 혼재
+- 관심사 분리(SoC) 원칙 위반
 
-[Summarizer]      "## 종합 코드 리뷰
-                   심각도 상: eval() 제거, SQL 파라미터 바인딩
-                   심각도 상: 비밀번호 환경변수로 이동
-                   심각도 중: 관심사 분리 리팩토링
-                   REVIEW_COMPLETE"
-```
+</div>
+<div>
+
+### `SecurityReviewer`
+
+- `check_security_patterns()` 호출
+- 🔴 `eval()` 사용 → 코드 인젝션 위험
+- 🔴 SQL 인젝션 가능성
+- 🔴 하드코딩된 비밀번호
+
+</div>
+</div>
+
+<div class="columns">
+<div>
+
+### `CodeOptimizer`
+
+- `SELECT *` 대신 필요한 컬럼만 조회
+- 파라미터 바인딩으로 쿼리 최적화
+
+</div>
+<div>
+
+### `Summarizer`
+
+- 심각도 상: `eval()` 제거, SQL 파라미터 바인딩
+- 심각도 상: 비밀번호 환경변수로 이동
+- 심각도 중: 관심사 분리 리팩토링
+- `REVIEW_COMPLETE`
+
+</div>
+</div>
 
 ---
 
@@ -1557,33 +1314,23 @@ agent = AssistantAgent(
 
 # 흔한 실수와 해결법
 
-| 실수 | 증상 | 해결법 |
-| --- | --- | --- |
-| 종료 조건 누락 | 무한 루프, 비용 폭증 | `MaxMessageTermination` 항상 포함 |
-| Agent 수 과다 | 느린 응답, 비효율적 대화 | 2~4개 Agent로 시작 |
-| 모호한 역할 | Selector가 잘못된 Agent 선택 | `description` 구체적으로 작성 |
-| 도구 에러 미처리 | Agent가 오류에 대처 못함 | 문자열로 에러 반환 |
-| `reset()` 미호출 | 이전 대화가 누적 | 새 작업 시 `team.reset()` |
+| 실수             | 증상                         | 해결법                            |
+| ---------------- | ---------------------------- | --------------------------------- |
+| 종료 조건 누락   | 무한 루프, 비용 폭증         | `MaxMessageTermination` 항상 포함 |
+| Agent 수 과다    | 느린 응답, 비효율적 대화     | 2~4개 Agent로 시작                |
+| 모호한 역할      | Selector가 잘못된 Agent 선택 | `description` 구체적으로 작성     |
+| 도구 에러 미처리 | Agent가 오류에 대처 못함     | 문자열로 에러 반환                |
+| `reset()` 미호출 | 이전 대화가 누적             | 새 작업 시 `team.reset()`         |
 
 ---
 
 # Team 패턴 선택 가이드
 
-```
-작업의 성격은?
-    │
-    ├─ 순서가 정해진 반복 피드백 ──→  RoundRobinGroupChat
-    │   (Writer ↔ Critic)             - 예측 가능한 흐름
-    │                                  - 간단한 설정
-    │
-    ├─ 전문가 협업, 동적 선택 ──────→  SelectorGroupChat
-    │   (Planner + 전문가들)           - LLM 기반 라우팅
-    │                                  - 유연한 참여
-    │
-    └─ 워크플로우 기반, 분기 있음 ──→  Swarm
-        (고객 서비스, 주문 처리)        - 자율 핸드오프
-                                       - 사용자 개입 용이
-```
+| 작업의 성격                                         | 추천 패턴             | 설명                                  |
+| --------------------------------------------------- | --------------------- | ------------------------------------- |
+| 순서가 정해진 반복 피드백 (Writer ↔ Critic)         | `RoundRobinGroupChat` | - 예측 가능한 흐름<br>- 간단한 설정   |
+| 전문가 협업, 동적 선택 (Planner + 전문가들)         | `SelectorGroupChat`   | - LLM 기반 라우팅<br>- 유연한 참여    |
+| 워크플로우 기반, 분기 있음 (고객 서비스, 주문 처리) | `Swarm`               | - 자율 핸드오프<br>- 사용자 개입 용이 |
 
 ---
 
@@ -1612,15 +1359,15 @@ outer_team = SelectorGroupChat(
 
 # 정리: AutoGen Multi-Agent 핵심 요소
 
-|     구성요소      | 역할               | AutoGen 구현                        |
-| :---------------: | ------------------ | ----------------------------------- |
-|     **Agent**     | 자율적 작업 수행   | `AssistantAgent`, `UserProxyAgent`  |
-|     **Team**      | 에이전트 협업 구조 | `RoundRobin`, `Selector`, `Swarm`   |
-|     **Tool**      | 외부 기능 확장     | Python 함수, `FunctionTool`         |
-|    **Handoff**    | 에이전트 간 위임   | `handoffs=[]` + `HandoffMessage`    |
-|  **Termination**  | 종료 조건 관리     | `TextMention`, `MaxMessage` 등      |
-| **Human-in-Loop** | 사람 개입          | `UserProxyAgent`, Swarm 핸드오프    |
-|    **State**      | 상태 저장/복원     | `save_state()` / `load_state()`     |
+|     구성요소      | 역할               | AutoGen 구현                       |
+| :---------------: | ------------------ | ---------------------------------- |
+|     **Agent**     | 자율적 작업 수행   | `AssistantAgent`, `UserProxyAgent` |
+|     **Team**      | 에이전트 협업 구조 | `RoundRobin`, `Selector`, `Swarm`  |
+|     **Tool**      | 외부 기능 확장     | Python 함수, `FunctionTool`        |
+|    **Handoff**    | 에이전트 간 위임   | `handoffs=[]` + `HandoffMessage`   |
+|  **Termination**  | 종료 조건 관리     | `TextMention`, `MaxMessage` 등     |
+| **Human-in-Loop** | 사람 개입          | `UserProxyAgent`, Swarm 핸드오프   |
+|     **State**     | 상태 저장/복원     | `save_state()` / `load_state()`    |
 
 ---
 
@@ -1641,6 +1388,10 @@ outer_team = SelectorGroupChat(
 ---
 
 # Q&A
+
+<!-- _class: center -->
+
+![center width:800px](images/qna.jpg)
 
 ---
 
