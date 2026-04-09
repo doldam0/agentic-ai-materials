@@ -1131,24 +1131,13 @@ team = RoundRobinGroupChat([agent_a, agent_b], termination_condition=external)
 
 종료 조건 없이 실행하면 _무한 루프, 토큰 과다 소모, 비용 폭증_ 위험
 
-### 실전 설계 원칙
+### 실전 설계 체크리스트
 
-```
-┌─────────────────────────────────────────────────┐
-│          Termination 조건 설계 체크리스트          │
-│                                                   │
-│  ✓ 정상 종료: TextMentionTermination("APPROVE")  │
-│    → Agent가 작업 완료를 명시적으로 선언            │
-│                                                   │
-│  ✓ 안전 장치: MaxMessageTermination(30)           │
-│    → 무한 루프 방지용 상한선                       │
-│                                                   │
-│  ✓ 시간 제한: TimeoutTermination(300)             │
-│    → 프로덕션 환경의 SLA 준수                      │
-│                                                   │
-│  항상 OR 조합으로 안전 장치를 포함하세요!           │
-└─────────────────────────────────────────────────┘
-```
+- **정상 종료**: `TextMentionTermination("APPROVE")` → Agent가 작업 완료를 명시적으로 선언
+- **안전 장치**: `MaxMessageTermination(30)` → 무한 루프 방지용 상한선
+- **시간 제한**: `TimeoutTermination(300)` → 프로덕션 환경의 SLA 준수
+
+> 항상 OR 조합으로 안전 장치를 포함하세요!
 
 ---
 
