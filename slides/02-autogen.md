@@ -37,6 +37,7 @@ Microsoft AutoGen 기반 멀티 에이전트 시스템 구축
 4. RoundRobinGroupChat (순환 대화)
 5. SelectorGroupChat (동적 선택)
 6. Swarm (자율 핸드오프)
+7. GraphFlow (그래프 기반 실행 제어)
 
 </div>
 </div>
@@ -46,19 +47,19 @@ Microsoft AutoGen 기반 멀티 에이전트 시스템 구축
 
 ### Part 3: 실전 심화 (1)
 
-7. Tool Use (도구 사용)
-8. FunctionTool과 고급 도구 패턴
-9. Termination 조건
+8. Tool Use (도구 사용)
+9. FunctionTool과 고급 도구 패턴
+10. Termination 조건
 
 </div>
 <div>
 
 ### Part 3: 실전 심화 (2)
 
-10. 에이전트 상태 저장과 복원
-11. 디버깅과 모니터링
-12. 통합 실습: 코드 리뷰 에이전트 팀
-13. 실전 팁과 베스트 프랙티스
+11. 에이전트 상태 저장과 복원
+12. 디버깅과 모니터링
+13. 통합 실습: 코드 리뷰 에이전트 팀
+14. 실전 팁과 베스트 프랙티스
 
 </div>
 </div>
@@ -648,6 +649,328 @@ async def main():
 
 # 07
 
+## GraphFlow (그래프 기반 실행 제어)
+
+---
+
+# GraphFlow란?
+
+에이전트 실행 순서를 **DiGraph(방향 그래프)** 로 명시적으로 정의하는 패턴
+
+### 기존 패턴과의 차이
+
+| 기존 패턴 (RoundRobin / Selector / Swarm) | GraphFlow                        |
+| :---------------------------------------: | :------------------------------- |
+|         런타임에 다음 발언자 결정         | **그래프 구조로 사전 정의**      |
+|           유연하지만 비결정론적           | **결정론적, 예측 가능한 흐름**   |
+|             순차 실행만 가능              | **병렬 실행(Fan-out/Join) 지원** |
+
+### 지원하는 흐름
+
+- **순차(Sequential)** · **병렬(Parallel)** · **조건 분기(Conditional)** · **루프(Loop)**
+
+---
+
+# GraphFlow 주요 API
+
+### `DiGraphBuilder` — 그래프 구성 빌더
+
+| 메서드                           | 설명                                        | 예시                                                     |
+| -------------------------------- | ------------------------------------------- | -------------------------------------------------------- |
+| `add_node(agent)`                | 그래프에 Agent 노드 추가. 체이닝 가능       | `builder.add_node(writer).add_node(critic)`              |
+| `set_entry_point(agent)`         | **시작 노드** 지정 (필수)                   | `builder.set_entry_point(writer)`                        |
+| `add_edge(src, tgt)`             | 순차 연결: src 완료 후 tgt 실행             | `builder.add_edge(writer, reviewer)`                     |
+| `add_edge(src, tgt, condition=)` | **조건 분기**: condition이 True일 때만 이동 | `condition=lambda msg: "APPROVE" in msg.to_model_text()` |
+
+---
+
+# GraphFlow 주요 API (계속)
+
+### `DiGraphBuilder` (계속)
+
+| 메서드               | 설명                               | 예시                                      |
+| -------------------- | ---------------------------------- | ----------------------------------------- |
+| `build()`            | 그래프 검증 후 `DiGraph` 객체 반환 | `graph = builder.build()`                 |
+| `get_participants()` | 등록된 Agent 리스트 반환           | `participants=builder.get_participants()` |
+
+---
+
+# GraphFlow 주요 API (계속)
+
+### GraphFlow — 실행 엔진
+
+<style scoped>
+    pre { font-size: 0.62em; }
+</style>
+
+```python
+flow = GraphFlow(
+    participants=[writer, reviewer, publisher],   # Agent 목록
+    graph=graph,                                   # DiGraphBuilder.build() 결과
+    termination_condition=termination,             # 종료 조건
+)
+
+await Console(flow.run_stream(task="작업 지시"))
+```
+
+### 핵심 개념
+
+- **Fan-out (병렬)**: 하나의 노드에서 여러 노드로 `add_edge` → 동시 실행
+- **Join**: 여러 노드가 같은 노드를 가리키면 → **모든 선행 노드 완료 후** 실행
+- **조건 분기**: `condition` 함수가 True인 엣지만 활성화
+- **루프**: 조건에 따라 이전 노드로 되돌아가는 엣지 → 반복 실행
+
+---
+
+<style scoped>
+  pre { font-size: 0.62em; }
+</style>
+
+# 예제 1: 콘텐츠 검수 파이프라인
+
+조건 분기 + 루프 — 승인될 때까지 Writer ↔ Reviewer 반복
+
+```python
+from autogen_agentchat.agents import AssistantAgent
+from autogen_agentchat.teams import GraphFlow, DiGraphBuilder
+from autogen_agentchat.conditions import MaxMessageTermination
+
+writer = AssistantAgent(
+    "writer", model_client=model_client,
+    system_message="주어진 주제로 짧은 글을 작성하세요. 피드백이 있으면 반영하여 수정하세요.",
+)
+reviewer = AssistantAgent(
+    "reviewer", model_client=model_client,
+    system_message="""글을 검토하세요.
+    첫 번째 리뷰에서는 반드시 구체적인 개선점을 제시하세요. 절대 첫 리뷰에서 승인하지 마세요.
+    두 번째 리뷰부터 수정이 잘 반영되었으면 반드시 'APPROVE'를 포함하여 응답하세요.""",
+)
+publisher = AssistantAgent(
+    "publisher", model_client=model_client,
+    system_message="최종 승인된 글을 정리하여 발행 형태로 출력하세요.",
+)
+```
+
+---
+
+<style scoped>
+  pre { font-size: 0.62em; }
+</style>
+
+# 콘텐츠 검수: 그래프 구성
+
+```python
+builder = DiGraphBuilder()
+builder.add_node(writer).add_node(reviewer).add_node(publisher)
+builder.set_entry_point(writer)
+
+# Writer → Reviewer
+builder.add_edge(writer, reviewer)
+
+# 조건 분기: APPROVE 여부에 따라 경로 결정
+builder.add_edge(reviewer, publisher,
+    condition=lambda msg: "APPROVE" in msg.to_model_text())
+builder.add_edge(reviewer, writer,
+    condition=lambda msg: "APPROVE" not in msg.to_model_text())
+
+graph = builder.build()
+```
+
+---
+
+# 콘텐츠 검수: 실행 흐름
+
+<!-- _class: center -->
+
+![center width:1400px](images/content-review-flow.png)
+
+- **에이전트가 아닌 조건 함수**가 분기를 결정 → Swarm보다 예측 가능
+- `MaxMessageTermination`으로 무한 루프 방지
+
+---
+
+<style scoped>
+  pre { font-size: 0.62em; }
+</style>
+
+# 콘텐츠 검수: 실행
+
+```python
+termination = MaxMessageTermination(10)
+
+flow = GraphFlow(
+    participants=[writer, reviewer, publisher],
+    graph=graph,
+    termination_condition=termination,
+)
+
+async def main():
+    result = await Console(
+        flow.run_stream(task="AI 에이전트의 미래에 대해 글을 작성해주세요.")
+    )
+    print(result)
+
+asyncio.run(main())
+```
+
+---
+
+<style scoped>
+  pre { font-size: 0.62em; }
+</style>
+
+# 예제 2: 다관점 분석 (병렬 실행)
+
+하나의 리서치 결과를 **3명이 동시에** 분석 → 종합
+
+```python
+researcher = AssistantAgent(
+    "researcher", model_client=model_client,
+    system_message="주어진 주제에 대해 핵심 데이터와 사실을 조사하여 보고하세요.",
+)
+analyst_pro = AssistantAgent(
+    "analyst_pro", model_client=model_client,
+    system_message="긍정적 관점에서 기회와 장점을 분석하세요.",
+)
+analyst_con = AssistantAgent(
+    "analyst_con", model_client=model_client,
+    system_message="비판적 관점에서 리스크와 단점을 분석하세요.",
+)
+synthesizer = AssistantAgent(
+    "synthesizer", model_client=model_client,
+    system_message="모든 분석 결과를 종합하여 균형 잡힌 최종 보고서를 작성하세요.",
+)
+```
+
+---
+
+<style scoped>
+  pre { font-size: 0.62em; }
+</style>
+
+# 다관점 분석: 그래프 구성 및 실행
+
+```python
+builder = DiGraphBuilder()
+builder.add_node(researcher)
+builder.add_node(analyst_pro).add_node(analyst_con)
+builder.add_node(synthesizer)
+builder.set_entry_point(researcher)
+
+# Fan-out: Researcher → 긍정/부정 분석 동시 실행
+builder.add_edge(researcher, analyst_pro)
+builder.add_edge(researcher, analyst_con)
+
+# Join: 두 분석이 모두 끝나면 → Synthesizer
+builder.add_edge(analyst_pro, synthesizer)
+builder.add_edge(analyst_con, synthesizer)
+
+graph = builder.build()
+flow = GraphFlow(participants=builder.get_participants(), graph=graph)
+```
+
+---
+
+<!-- _class: center -->
+
+# 다관점 분석: 실행 흐름
+
+![center width:1500px](images/multi-perspective-analysis.png)
+
+- **병렬 실행**은 GraphFlow만의 고유 기능 (다른 3패턴은 불가)
+- Join 노드는 기본적으로 **모든 선행 노드 완료 후** 실행
+
+---
+
+<style scoped>
+  pre { font-size: 0.62em; }
+</style>
+
+# 예제 3: 고객 문의 라우팅 (조건 분기)
+
+Classifier가 문의를 분류 → **분류 결과에 따라 전문 에이전트로 자동 라우팅**
+
+```python
+classifier = AssistantAgent(
+    "classifier", model_client=model_client,
+    system_message="""고객 문의를 분류하세요. 반드시 다음 중 하나를 첫 줄에 출력하세요:
+    [BILLING] - 결제/환불 관련
+    [TECHNICAL] - 기술 지원 관련
+    [GENERAL] - 일반 문의""",
+)
+billing_agent = AssistantAgent(
+    "billing_agent", model_client=model_client,
+    system_message="결제/환불 전문 상담원입니다. 고객의 결제 문의를 처리하세요.",
+)
+tech_agent = AssistantAgent(
+    "tech_agent", model_client=model_client,
+    system_message="기술 지원 전문 상담원입니다. 고객의 기술 문의를 해결하세요.",
+)
+general_agent = AssistantAgent(
+    "general_agent", model_client=model_client,
+    system_message="일반 상담원입니다. 고객의 일반 문의에 응답하세요.",
+)
+```
+
+---
+
+<style scoped>
+  pre { font-size: 0.62em; }
+</style>
+
+# 고객 문의 라우팅: 그래프 구성 및 실행
+
+```python
+builder = DiGraphBuilder()
+builder.add_node(classifier)
+builder.add_node(billing_agent).add_node(tech_agent).add_node(general_agent)
+builder.set_entry_point(classifier)
+
+builder.add_edge(classifier, billing_agent,
+    condition=lambda msg: "[BILLING]" in msg.to_model_text())
+builder.add_edge(classifier, tech_agent,
+    condition=lambda msg: "[TECHNICAL]" in msg.to_model_text())
+builder.add_edge(classifier, general_agent,
+    condition=lambda msg: "[GENERAL]" in msg.to_model_text())
+
+graph = builder.build()
+flow = GraphFlow(participants=builder.get_participants(), graph=graph)
+```
+
+---
+
+# 고객 문의 라우팅: 실행 흐름
+
+<!-- _class: center -->
+
+![center width:1400px](images/customer-routing.png)
+
+### Swarm과의 차이
+
+- **Swarm**: 에이전트가 스스로 핸드오프 대상을 판단 (LLM 의존)
+- **GraphFlow**: 조건 함수가 분기를 결정 → **오분류 시 디버깅이 쉽고 흐름이 투명**
+
+---
+
+# 4가지 Team 패턴 비교
+
+|        구분        |  RoundRobin   | SelectorGroupChat |       Swarm       |        GraphFlow        |
+| :----------------: | :-----------: | :---------------: | :---------------: | :---------------------: |
+|   **발언 순서**    |   고정 순서   |  LLM이 동적 선택  | Agent가 자율 결정 | **그래프로 명시 정의**  |
+| **오케스트레이터** |  없음 (순환)  |   LLM Selector    |    없음 (분산)    |    **DiGraph 구조**     |
+|  **적합한 작업**   | Writer-Critic |    전문가 협업    | 워크플로우 라우팅 | **결정론적 파이프라인** |
+|     **복잡도**     |     낮음      |       중간        |       높음        |          중간           |
+|     **유연성**     |     낮음      |       높음        |     매우 높음     |       중간 (정적)       |
+|   **병렬 실행**    |       ✕       |         ✕         |         ✕         |          **✔**          |
+
+---
+
+<!-- _class: section-divider -->
+<!-- _paginate: false -->
+<!-- _footer: "" -->
+
+# 08
+
 ## Tool Use (도구 사용)
 
 ---
@@ -782,7 +1105,7 @@ generalist = AssistantAgent(
 <!-- _paginate: false -->
 <!-- _footer: "" -->
 
-# 08
+# 09
 
 ## FunctionTool과 고급 도구 패턴
 
@@ -884,7 +1207,7 @@ async def fetch_stock_price(ticker: str) -> str:
 <!-- _paginate: false -->
 <!-- _footer: "" -->
 
-# 9
+# 10
 
 ## Termination 조건
 
@@ -985,7 +1308,7 @@ result = await Console(team.run_stream(task="새로운 작업을 시작합니다
 <!-- _paginate: false -->
 <!-- _footer: "" -->
 
-# 10
+# 11
 
 ## 에이전트 상태 저장과 복원
 
@@ -1073,7 +1396,7 @@ await new_writer.load_state(agent_state)
 <!-- _paginate: false -->
 <!-- _footer: "" -->
 
-# 11
+# 12
 
 ## 디버깅과 모니터링
 
@@ -1162,7 +1485,7 @@ for msg in result.messages:
 <!-- _paginate: false -->
 <!-- _footer: "" -->
 
-# 12
+# 13
 
 ## 통합 실습: 코드 리뷰 에이전트 팀
 
@@ -1341,7 +1664,7 @@ asyncio.run(Console(team.run_stream(task=f"다음 코드를 리뷰해주세요:\
 <!-- _paginate: false -->
 <!-- _footer: "" -->
 
-# 13
+# 14
 
 ## 실전 팁과 베스트 프랙티스
 
