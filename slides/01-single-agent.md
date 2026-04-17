@@ -180,29 +180,29 @@ conda create -n agentic-ai python=3.13 -y
 conda activate agentic-ai
 
 # 3. 필수 패키지 설치
-pip install langchain langchain-core langchain-openai langchain-community \
-    langchain-text-splitters langgraph chromadb
+pip install langchain langchain-core langchain-groq langchain-community \
+    langchain-huggingface langchain-text-splitters langgraph chromadb
 ```
 
 ---
 
-# OpenAI API 키 발급
+# Groq API 키 발급
 
 ### 발급 절차
 
-1. [OpenAI Platform](https://platform.openai.com) 접속 및 로그인
-2. 우측 상단 프로필 → **API keys** 클릭
-3. **Create new secret key** 버튼 클릭
+1. [GroqCloud Console](https://console.groq.com) 접속 및 로그인
+2. 좌측 메뉴 → **API Keys** 클릭
+3. **Create API Key** 버튼 클릭
 4. 키 이름 입력 후 생성 → _키 복사 (한 번만 표시됨!)_
 
 ### 환경 변수 설정
 
 ```bash
 # macOS/Linux
-export OPENAI_API_KEY="sk-..."
+export GROQ_API_KEY="gsk_..."
 
 # Windows (PowerShell)
-$env:OPENAI_API_KEY="sk-..."
+$env:GROQ_API_KEY="gsk_..."
 ```
 
 ---
@@ -210,11 +210,11 @@ $env:OPENAI_API_KEY="sk-..."
 # LangChain 기본 사용법
 
 ```python
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 
-# OPENAI_API_KEY 환경 변수를 자동으로 사용
-llm = ChatOpenAI(
-    model="gpt-5.4-nano",
+# GROQ_API_KEY 환경 변수를 자동으로 사용
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
     temperature=0.7
 )
 
@@ -556,7 +556,7 @@ _검색(Retrieval)_ + _생성(Generation)_ 결합
 ```python
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 
 # 1. 문서 로드
@@ -569,8 +569,9 @@ splitter = RecursiveCharacterTextSplitter(
 )
 chunks = splitter.split_documents(documents)
 
-# 3. 벡터 저장소 생성
-vectorstore = Chroma.from_documents(chunks, OpenAIEmbeddings())
+# 3. 벡터 저장소 생성 (로컬 임베딩 모델 사용)
+embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+vectorstore = Chroma.from_documents(chunks, embeddings)
 ```
 
 ---
@@ -889,6 +890,7 @@ print(result)
 
 - **LangChain**: https://python.langchain.com
 - **LangGraph**: https://langchain-ai.github.io/langgraph
+- **Groq**: https://console.groq.com/docs
 
 ### 주요 논문
 

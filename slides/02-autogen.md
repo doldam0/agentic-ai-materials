@@ -82,7 +82,7 @@ Microsoft가 개발한 _멀티 에이전트 AI 애플리케이션_ 구축 프레
 
 - 여러 Agent가 *대화를 통해 협업*하여 복잡한 작업 해결
 - Agent 간 역할 분담, 도구 사용, 코드 실행 지원
-- 다양한 LLM 벤더 지원 (OpenAI, Azure, Anthropic, Ollama 등)
+- 다양한 LLM 벤더 지원 (OpenAI, Groq, Azure, Anthropic, Ollama 등)
 
 ---
 
@@ -148,34 +148,49 @@ pip install -U "autogen-agentchat" "autogen-ext[openai]"
 
 ### 지원 모델 클라이언트
 
-|            클라이언트             | 패키지                      | 비고               |
-| :-------------------------------: | --------------------------- | ------------------ |
-|   `OpenAIChatCompletionClient`    | `autogen-ext[openai]`       | GPT-4o, GPT-4.1 등 |
-| `AzureOpenAIChatCompletionClient` | `autogen-ext[openai,azure]` | Azure 배포 모델    |
-|  `AnthropicChatCompletionClient`  | `autogen-ext[anthropic]`    | Claude (실험적)    |
-|   `OllamaChatCompletionClient`    | `autogen-ext[ollama]`       | 로컬 모델 (실험적) |
+|            클라이언트             | 패키지                      | 비고                         |
+| :-------------------------------: | --------------------------- | ---------------------------- |
+|   `OpenAIChatCompletionClient`    | `autogen-ext[openai]`       | OpenAI, **Groq** 등 호환 API |
+| `AzureOpenAIChatCompletionClient` | `autogen-ext[openai,azure]` | Azure 배포 모델              |
+|  `AnthropicChatCompletionClient`  | `autogen-ext[anthropic]`    | Claude (실험적)              |
+|   `OllamaChatCompletionClient`    | `autogen-ext[ollama]`       | 로컬 모델 (실험적)           |
 
 ---
 
-# 모델 클라이언트 설정
+# 모델 클라이언트 설정 (Groq)
+
+### 환경 변수 설정
+
+```bash
+# macOS/Linux
+export GROQ_API_KEY="gsk_..."
+
+# Windows (PowerShell)
+$env:GROQ_API_KEY="gsk_..."
+```
+
+---
+
+# 모델 클라이언트 설정 (Groq) (계속)
 
 ```python
+import os
 from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelFamily
 
-# OpenAI 모델 클라이언트 생성
 model_client = OpenAIChatCompletionClient(
-    model="gpt-4o",
-    # api_key="YOUR_API_KEY",  # 또는 OPENAI_API_KEY 환경변수 설정
-)
-
-# Azure OpenAI 사용 시
-from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
-
-azure_client = AzureOpenAIChatCompletionClient(
-    azure_deployment="gpt-4o",
-    azure_endpoint="https://your-endpoint.openai.azure.com/",
-    model="gpt-4o",
-    api_version="2024-06-01",
+    model="meta-llama/llama-4-scout-17b-16e-instruct",
+    base_url="https://api.groq.com/openai/v1",
+    api_key=os.environ["GROQ_API_KEY"],
+    model_info={
+        "max_tokens": 4096,
+        "temperature": 0.7,
+        "vision": False,
+        "function_calling": True,
+        "family": ModelFamily.UNKNOWN,
+        "structured_output": True,
+        "json_output": True,
+    }
 )
 ```
 
@@ -231,8 +246,6 @@ import asyncio
 from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.ui import Console
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-
-model_client = OpenAIChatCompletionClient(model="gpt-4o")
 
 agent = AssistantAgent(
     name="assistant",
@@ -313,8 +326,6 @@ from autogen_core import Image
 from io import BytesIO
 import PIL, requests
 
-model_client = OpenAIChatCompletionClient(model="gpt-4o")
-
 agent = AssistantAgent(
     "annotator",
     model_client=model_client,
@@ -342,7 +353,7 @@ result = await Console(agent.run_stream(task=MultiModalMessage(
 ```
 
 - `content`에 **텍스트와 `Image` 객체를 리스트로** 함께 전달
-- 비전 모델(`gpt-4o` 등)이 필요 — 텍스트 전용 모델은 이미지 처리 불가
+- 비전 모델(`llama-3.2-90b-vision-preview` 등)이 필요 — 텍스트 전용 모델은 이미지 처리 불가
 
 ---
 
@@ -1518,10 +1529,6 @@ from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.teams import SelectorGroupChat
 from autogen_agentchat.conditions import TextMentionTermination, MaxMessageTermination
 from autogen_agentchat.ui import Console
-from autogen_ext.models.openai import OpenAIChatCompletionClient
-
-model_client = OpenAIChatCompletionClient(model="gpt-4o")
-
 async def count_lines(code: str) -> str:
     """코드의 줄 수와 함수 수를 분석합니다."""
     lines = code.strip().split("\n")
@@ -1760,7 +1767,7 @@ outer_team = SelectorGroupChat(
 
 - **AutoGen**: https://microsoft.github.io/autogen/stable/
 - **AgentChat Guide**: https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/index.html
-- **Core Guide**: https://microsoft.github.io/autogen/stable/user-guide/core-user-guide/index.html
+- **Groq**: https://console.groq.com/docs
 
 ### Design Patterns
 
